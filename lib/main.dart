@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -8,6 +10,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Virtual Aquarium',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
       home: AquariumPage(),
     );
   }
@@ -22,6 +28,31 @@ class _AquariumPageState extends State<AquariumPage> {
   List<Fish> fishList = [];
   double speed = 1.0;
   Color selectedColor = Colors.blue;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startFishMovement();
+  }
+
+  void _startFishMovement() {
+    // Move fish periodically every 50 milliseconds
+    _timer = Timer.periodic(Duration(milliseconds: 50), (timer) {
+      setState(() {
+        for (var fish in fishList) {
+          fish.move();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancel the timer when the widget is disposed
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +60,7 @@ class _AquariumPageState extends State<AquariumPage> {
       appBar: AppBar(title: Text('Virtual Aquarium')),
       body: Column(
         children: [
+          // The container representing the aquarium
           Container(
             width: 300,
             height: 300,
@@ -39,10 +71,12 @@ class _AquariumPageState extends State<AquariumPage> {
           ),
           Row(
             children: [
+              // Button to add a new fish
               ElevatedButton(onPressed: _addFish, child: Text('Add Fish')),
               ElevatedButton(onPressed: _saveSettings, child: Text('Save Settings')),
             ],
           ),
+          // Slider to adjust the fish swimming speed
           Slider(
             value: speed,
             min: 0.5,
@@ -53,6 +87,7 @@ class _AquariumPageState extends State<AquariumPage> {
               });
             },
           ),
+          // Dropdown menu to select the fish color
           DropdownButton<Color>(
             value: selectedColor,
             onChanged: (Color? newColor) {
@@ -82,7 +117,7 @@ class _AquariumPageState extends State<AquariumPage> {
   }
 
   void _saveSettings() {
-    // Save fish count, color, and speed using local storage (to be implemented in the next step)
+    // Save fish count, color, and speed using local storage (to be implemented in next steps)
   }
 }
 
@@ -90,12 +125,31 @@ class Fish {
   final Color color;
   final double speed;
   Offset position;
+  Offset direction;
 
-  Fish({required this.color, required this.speed}) : position = Offset(150, 150);
+  Fish({required this.color, required this.speed})
+      : position = Offset(150, 150), // Initial position at the center of the aquarium
+        direction = Offset(
+            Random().nextDouble() * 2 - 1, Random().nextDouble() * 2 - 1); // Random direction
+
+  void move() {
+    // Move the fish by its speed and direction
+    position = Offset(
+      position.dx + direction.dx * speed,
+      position.dy + direction.dy * speed,
+    );
+
+    // Check if the fish hits the container boundaries (300x300)
+    if (position.dx <= 0 || position.dx >= 280) {
+      direction = Offset(-direction.dx, direction.dy); // Reverse horizontal direction
+    }
+    if (position.dy <= 0 || position.dy >= 280) {
+      direction = Offset(direction.dx, -direction.dy); // Reverse vertical direction
+    }
+  }
 
   Widget build(BuildContext context) {
-    return AnimatedPositioned(
-      duration: Duration(milliseconds: (1000 / speed).toInt()),
+    return Positioned(
       top: position.dy,
       left: position.dx,
       child: Container(

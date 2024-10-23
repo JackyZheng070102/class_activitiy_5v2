@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'database_helper.dart'; // Import the database helper
 
 void main() {
@@ -44,7 +42,7 @@ class _AquariumPageState extends State<AquariumPage> {
     _timer = Timer.periodic(Duration(milliseconds: 50), (timer) {
       setState(() {
         for (var fish in fishList) {
-          fish.move();
+          fish.move(fishList); // Pass fishList to check for collisions
         }
       });
     });
@@ -75,7 +73,6 @@ class _AquariumPageState extends State<AquariumPage> {
         speed = settings['speed'];
         selectedColor = _stringToColor(settings['color']);
 
-        // Repopulate the fish list based on saved settings
         fishList = List.generate(fishCount, (index) {
           return Fish(color: selectedColor, speed: speed);
         });
@@ -173,7 +170,7 @@ class _AquariumPageState extends State<AquariumPage> {
 }
 
 class Fish {
-  final Color color;
+  Color color;
   final double speed;
   Offset position;
   Offset direction;
@@ -183,29 +180,67 @@ class Fish {
         direction = Offset(
             Random().nextDouble() * 2 - 1, Random().nextDouble() * 2 - 1);
 
-  void move() {
+  void move(List<Fish> fishList) {
+    // Move the fish by its speed and direction
     position = Offset(
       position.dx + direction.dx * speed,
       position.dy + direction.dy * speed,
     );
+
+    // Bounce off container edges
     if (position.dx <= 0 || position.dx >= 280) {
       direction = Offset(-direction.dx, direction.dy);
     }
     if (position.dy <= 0 || position.dy >= 280) {
       direction = Offset(direction.dx, -direction.dy);
     }
+
+    // Check for collision with other fish
+    for (var otherFish in fishList) {
+      if (this != otherFish && _checkForCollision(otherFish)) {
+        _changeDirection();
+        otherFish._changeDirection();
+        _randomColor();
+        otherFish._randomColor();
+      }
+    }
+  }
+
+  bool _checkForCollision(Fish otherFish) {
+    return (position.dx - otherFish.position.dx).abs() < 20 &&
+        (position.dy - otherFish.position.dy).abs() < 20;
+  }
+
+  void _changeDirection() {
+    direction = Offset(-direction.dx, -direction.dy);
+  }
+
+  void _randomColor() {
+    final random = Random();
+    final colors = [Colors.blue, Colors.red, Colors.green, Colors.yellow];
+    color = colors[random.nextInt(colors.length)];
   }
 
   Widget build(BuildContext context) {
     return Positioned(
       top: position.dy,
       left: position.dx,
-      child: Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
+      child: TweenAnimationBuilder(
+        tween: Tween<double>(begin: 1.5, end: 1.0),
+        duration: Duration(seconds: 1),
+        builder: (context, double scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: child,
+          );
+        },
+        child: Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );

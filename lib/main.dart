@@ -73,6 +73,8 @@ class _AquariumPageState extends State<AquariumPage> {
             children: [
               // Button to add a new fish
               ElevatedButton(onPressed: _addFish, child: Text('Add Fish')),
+              // Button to remove the last fish
+              ElevatedButton(onPressed: _removeFish, child: Text('Remove Fish')),
               ElevatedButton(onPressed: _saveSettings, child: Text('Save Settings')),
             ],
           ),
@@ -109,10 +111,29 @@ class _AquariumPageState extends State<AquariumPage> {
   }
 
   void _addFish() {
+    // Limit the number of fish to 10
     if (fishList.length < 10) {
       setState(() {
         fishList.add(Fish(color: selectedColor, speed: speed));
       });
+    } else {
+      // Display a message when the fish limit is reached
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fish limit reached!')),
+      );
+    }
+  }
+
+  void _removeFish() {
+    if (fishList.isNotEmpty) {
+      setState(() {
+        fishList.removeLast(); // Removes the last fish added
+      });
+    } else {
+      // Display a message when there are no fish to remove
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No fish to remove!')),
+      );
     }
   }
 

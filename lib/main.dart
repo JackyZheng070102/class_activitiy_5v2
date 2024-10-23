@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'database_helper.dart'; // Import the database helper
 
 void main() {
   runApp(MyApp());
@@ -33,11 +36,11 @@ class _AquariumPageState extends State<AquariumPage> {
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _startFishMovement();
   }
 
   void _startFishMovement() {
-    // Move fish periodically every 50 milliseconds
     _timer = Timer.periodic(Duration(milliseconds: 50), (timer) {
       setState(() {
         for (var fish in fishList) {
@@ -49,9 +52,48 @@ class _AquariumPageState extends State<AquariumPage> {
 
   @override
   void dispose() {
-    // Cancel the timer when the widget is disposed
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _saveSettings() async {
+    await DatabaseHelper().saveSettings(
+      fishList.length,
+      speed,
+      selectedColor.toString(),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Settings saved!')),
+    );
+  }
+
+  Future<void> _loadSettings() async {
+    Map<String, dynamic> settings = await DatabaseHelper().loadSettings();
+    if (settings.isNotEmpty) {
+      setState(() {
+        int fishCount = settings['fishCount'];
+        speed = settings['speed'];
+        selectedColor = _stringToColor(settings['color']);
+
+        // Repopulate the fish list based on saved settings
+        fishList = List.generate(fishCount, (index) {
+          return Fish(color: selectedColor, speed: speed);
+        });
+      });
+    }
+  }
+
+  Color _stringToColor(String colorString) {
+    switch (colorString) {
+      case 'Color(0xff2196f3)':
+        return Colors.blue;
+      case 'Color(0xfff44336)':
+        return Colors.red;
+      case 'Color(0xff4caf50)':
+        return Colors.green;
+      default:
+        return Colors.blue;
+    }
   }
 
   @override
@@ -60,7 +102,6 @@ class _AquariumPageState extends State<AquariumPage> {
       appBar: AppBar(title: Text('Virtual Aquarium')),
       body: Column(
         children: [
-          // The container representing the aquarium
           Container(
             width: 300,
             height: 300,
@@ -71,14 +112,11 @@ class _AquariumPageState extends State<AquariumPage> {
           ),
           Row(
             children: [
-              // Button to add a new fish
               ElevatedButton(onPressed: _addFish, child: Text('Add Fish')),
-              // Button to remove the last fish
               ElevatedButton(onPressed: _removeFish, child: Text('Remove Fish')),
               ElevatedButton(onPressed: _saveSettings, child: Text('Save Settings')),
             ],
           ),
-          // Slider to adjust the fish swimming speed
           Slider(
             value: speed,
             min: 0.5,
@@ -89,7 +127,6 @@ class _AquariumPageState extends State<AquariumPage> {
               });
             },
           ),
-          // Dropdown menu to select the fish color
           DropdownButton<Color>(
             value: selectedColor,
             onChanged: (Color? newColor) {
@@ -111,13 +148,11 @@ class _AquariumPageState extends State<AquariumPage> {
   }
 
   void _addFish() {
-    // Limit the number of fish to 10
     if (fishList.length < 10) {
       setState(() {
         fishList.add(Fish(color: selectedColor, speed: speed));
       });
     } else {
-      // Display a message when the fish limit is reached
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fish limit reached!')),
       );
@@ -127,18 +162,13 @@ class _AquariumPageState extends State<AquariumPage> {
   void _removeFish() {
     if (fishList.isNotEmpty) {
       setState(() {
-        fishList.removeLast(); // Removes the last fish added
+        fishList.removeLast();
       });
     } else {
-      // Display a message when there are no fish to remove
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No fish to remove!')),
       );
     }
-  }
-
-  void _saveSettings() {
-    // Save fish count, color, and speed using local storage (to be implemented in next steps)
   }
 }
 
@@ -149,23 +179,20 @@ class Fish {
   Offset direction;
 
   Fish({required this.color, required this.speed})
-      : position = Offset(150, 150), // Initial position at the center of the aquarium
+      : position = Offset(150, 150),
         direction = Offset(
-            Random().nextDouble() * 2 - 1, Random().nextDouble() * 2 - 1); // Random direction
+            Random().nextDouble() * 2 - 1, Random().nextDouble() * 2 - 1);
 
   void move() {
-    // Move the fish by its speed and direction
     position = Offset(
       position.dx + direction.dx * speed,
       position.dy + direction.dy * speed,
     );
-
-    // Check if the fish hits the container boundaries (300x300)
     if (position.dx <= 0 || position.dx >= 280) {
-      direction = Offset(-direction.dx, direction.dy); // Reverse horizontal direction
+      direction = Offset(-direction.dx, direction.dy);
     }
     if (position.dy <= 0 || position.dy >= 280) {
-      direction = Offset(direction.dx, -direction.dy); // Reverse vertical direction
+      direction = Offset(direction.dx, -direction.dy);
     }
   }
 
